@@ -22,6 +22,8 @@ from djopenid.util import getViewURL
 
 from django import http
 from django.views.generic.simple import direct_to_template
+from django.shortcuts import render_to_response
+from django.template import RequestContext
 
 from openid.server.server import Server, ProtocolError, CheckIDRequest, \
      EncodingError
@@ -93,11 +95,14 @@ def trustPage(request):
     Display the trust page template, which allows the user to decide
     whether to approve the OpenID verification.
     """
-    return direct_to_template(
-        request,
+    return render_to_response(
         'server/trust.html',
-        {'trust_handler_url':getViewURL(request, processTrustResult)})
+        {'trust_handler_url':getViewURL(request, processTrustResult)},
+        RequestContext(request))
+from django.views.decorators.csrf import csrf_exempt
 
+# FIXME: no protection? WTF!!!
+@csrf_exempt
 def endpoint(request):
     """
     Respond to low-level OpenID protocol messages.
@@ -112,18 +117,19 @@ def endpoint(request):
         openid_request = s.decodeRequest(query)
     except ProtocolError, why:
         # This means the incoming request was invalid.
-        return direct_to_template(
-            request,
+        return render_to_response(
             'server/endpoint.html',
-            {'error': str(why)})
+            {'error': str(why)},
+            RequestContext(request)
+        )
 
     # If we did not get a request, display text indicating that this
     # is an endpoint.
     if openid_request is None:
-        return direct_to_template(
-            request,
+        return render_to_response(
             'server/endpoint.html',
-            {})
+            {},
+            RequestContext(request))
 
     # We got a request; if the mode is checkid_*, we will handle it by
     # getting feedback from the user or by checking the session.
@@ -196,14 +202,14 @@ def showDecidePage(request, openid_request):
 
     pape_request = pape.Request.fromOpenIDRequest(openid_request)
 
-    return direct_to_template(
-        request,
+    return render_to_response(
         'server/trust.html',
         {'trust_root': trust_root,
          'trust_handler_url':getViewURL(request, processTrustResult),
          'trust_root_valid': trust_root_valid,
          'pape_request': pape_request,
-         })
+         },
+        RequestContext(request))
 
 def processTrustResult(request):
     """
@@ -264,10 +270,10 @@ def displayResponse(request, openid_response):
     except EncodingError, why:
         # If it couldn't be encoded, display an error.
         text = why.response.encodeToKVForm()
-        return direct_to_template(
-            request,
+        return render_to_response(
             'server/endpoint.html',
-            {'error': cgi.escape(text)})
+            {'error': cgi.escape(text)},
+            RequestContext(request))
 
     # Construct the appropriate django framework response.
     r = http.HttpResponse(webresponse.body)
