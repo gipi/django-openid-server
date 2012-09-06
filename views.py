@@ -17,8 +17,8 @@ Some code conventions used here:
 
 import cgi
 
-from djopenid import util
-from djopenid.util import getViewURL
+import .util
+from .util import getViewURL
 
 from django import http
 from django.views.generic.simple import direct_to_template
